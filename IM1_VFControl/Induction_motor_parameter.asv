@@ -1,0 +1,107 @@
+clear all;
+clc;
+% TestMode
+IM_VF_DC_Torque = 1;
+% OperatingMode.IM
+IM_VF = 1;
+IM_IndirectVector = 2;
+% OperatingMode.DCM
+DC_Torque = 0;   
+DC_Speed = 1;
+VFMod
+%% Operating Mode Variable %%
+
+OperatingMode.TestMode = IM_VF_DC_Torque; %IM_VF_DC_Torque
+
+if (OperatingMode.TestMode  == IM_VF_DC_Torque)
+    OperatingMode.IM = IM_VF; %IM_VF
+    OperatingMode.DC = DC_Torque; % DC_Torque, DC_Speed
+end
+
+%% ============  DC Motor Controller Command ============ %%
+%====================== Do not edit upper area=========================%
+%======================================================================%
+%% Operating mode
+Vdc = 300;
+%% INV2 (DCMotor) Refrence Inputs
+INV2.Speed_Ref = 1000;                    % Speed refrence [rev/min]
+INV2.Torque_Ref = 100;                  % Torque refrence [Nm]
+INV2.SwitchingFrequency = 10e3;    % Switching frequency [Hz]
+%% Motor and Inverter Ratings
+DCMotor.Power=3336;               % Power[W]
+DCMotor.Va_rated=120;             % Rated Voltage [V]
+DCMotor.Ia_rated=25;              % Rated Current [A]
+DCMotor.Wm_rated=3000*2*pi/60;    % Rated Angular Velocity[rad/s]
+DCMotor.Te_rated=DCMotor.Power/DCMotor.Wm_rated;  % Rated Torque [Nm]
+
+%% 
+DCMotor.Ra=0.26;                  % Resistance [Ohm]
+DCMotor.La=1.7e-3;                % Inductance [H]
+DCMotor.J=.00252;                 % Moment of inertia [kg-m^2]
+DCMotor.B=.0;                     % Coefficient of viscous friction [kgm^2/sec]  
+
+DCMotor.Kt=DCMotor.Te_rated/DCMotor.Ia_rated;     % Torque constant [Nm/Wb/A]
+DCMotor.K=DCMotor.Kt;      
+
+%-- Current Controller Gains ------------------------------------------
+DCMotor.Wcc = 2*pi*500;             % current controller bandwidth [rad/s]
+DCMotor.Kpc = DCMotor.La*DCMotor.Wcc;               % P gain
+DCMotor.Kic = DCMotor.Ra*DCMotor.Wcc;               % I gain
+DCMotor.Kac = 1/DCMotor.Kpc;                % Anti-windup gain
+
+%--- Speed Controller Gains -------------------------------------------
+DCMotor.Wsc=2*pi*50;              % speed controller bandwidth [rad/s]
+DCMotor.Ksp=DCMotor.J*DCMotor.Wsc;                % P gain
+DCMotor.Ksi=DCMotor.Ksp*DCMotor.Wsc/5;            % I gain
+DCMotor.Ksa=1/DCMotor.Ksp;                % Anti-windup gain
+DCMotor.Te_limit=DCMotor.Te_rated;
+DCMotor.Ia_limit=DCMotor.Ia_rated;
+
+%% Induction Motor Setting
+ControlInputs.HzRef = 60;
+ControlInputs.DriveMode = VFMode;
+%% 3H 4Pole 220V rms Induction Motor
+IM.Fs = 60;                %rated freqency motor [Hz]
+IM.Ws = IM.Fs*2*pi;           %rated angular frequency
+IM.p = 4;                  %number of poles
+IM.pp = p/2;               %number of pole paris
+IM.P_rate = 3*746;         %rated Power
+
+IM.Wrpm_rated = 1795;       %rated speed
+IM.Wrm_rated = 2*pi*IM.Wrpm_rated/60; 
+IM.Wr_rated = IM.pp*IM.Wrm_rated;
+IM.Vll = 220;              %rated Vline to line
+IM.Vs_rated = IM.Vll*sqrt(2) / sqrt(3); %Vs_rated phase voltage (peak)
+IM.Jm = 0.089;			%intertia
+IM.Bm = 0;
+%% Motor Parameters
+IM.Rs = 0.435;		IM.Rr = 0.816;
+IM.Lls = 0.002;	IM.Llr = 0.002;		IM.Lm = 0.0693;
+IM.Ls = IM.Lm + IM.Lls;	IM.Lr = IM.Lm + IM.Llr;
+IM.A = 1/(IM.Ls*IM.Lr-IM.Lm*IM.Lm);
+IM.sigma = 1-IM.Lm^2/(IM.Ls*IM.Lr);
+IM.Kt = (3/2)*IM.pp*(IM.Lm/IM.Lr);
+%% FOC 
+IM.Pm_rated = 3*746;
+IM.Te_rated = IM.pp*IM.Pm_rated/IM.Wr_rated;
+IM.Idse_rated = IM.Vs_rated / sqrt(IM.Rs^2 + (IM.Ws*IM.Ls)^2);
+IM.Iqse_rated = IM.Te_rated / ((3/2)*IM.pp*(IM.Lm^2/IM.Lr)*IM.Idse_rated);
+IM.Lam_r_rated = IM.Lm*IM.Idse_rated;
+IM.Lam_dre_rated = IM.Lam_r_rated * 0.8;
+
+IM.Vdc = 1.2*2*Vs_rated;
+%% Speed Controller
+IM.Wsc = 2*pi*20;          %bandwidth
+IM.Kps = IM.Jm*IM.Wsc;
+IM.Kis = IM.Kps*IM.Wsc/5;
+IM.Kas = 1/IM.Kps;
+IM.alpha = 1;              %PI Controller
+%% Current Controller
+IM.Wcc = 10*IM.Wsc;
+IM.Kpc = IM.sigma*IM.Ls*IM.Wcc;
+IM.Kic = (IM.Rs + IM.Rr*(IM.Lm/IM.Lr)^2)*IM.Wcc;
+IM.Kac = 1/IM.Kpc;
+
+
+%sim('indmotorwithcc',2);
+
