@@ -44,5 +44,5 @@ run("INV1_GainCal.m");
 run("INV2_GainCal.m");
 
 %% Run Simulation
-sim("IM2_VFControl.slx");
+sim("IM2_IndirectVector.slx");
 
